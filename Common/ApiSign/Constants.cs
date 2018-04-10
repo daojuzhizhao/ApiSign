@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace Common
 {
-    public class KeyValueConverter
+    public static class Constants
     {
+        public const string HeaderSignKey = "sign";
     }
 }
