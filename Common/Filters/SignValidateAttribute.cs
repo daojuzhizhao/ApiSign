@@ -1,16 +1,25 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Web.Http.Controllers;
+using System.Web.Http.Filters;
+using System.Web.Http.Results;
 
 namespace Common
 {
     public class SignValidateAttribute : ActionFilterAttribute
     {
-        public override void OnActionExecuting(ActionExecutingContext context)
+        public override void OnActionExecuting(HttpActionContext context)
         {
-            var sign = context.HttpContext.Request.Headers["sign"];
+
+            var signDic = context.Request.Headers.Where(h => h.Key == Constants.HeaderSignKey).FirstOrDefault();
+            var sign = signDic.Key != null ? signDic.Value.FirstOrDefault() : string.Empty;
             if (!string.IsNullOrEmpty(sign))
             {
                 if (!context.ModelState.IsValid)
@@ -25,36 +34,83 @@ namespace Common
                     {
                         errorString = "参数不合法";
                     }
-                    context.HttpContext.Response.StatusCode = 500;
-                    context.Result = new JsonResult(new
+
+                    context.Response = new HttpResponseMessage
                     {
-                        Code = -500,
-                        Message = errorString
-                    });
+                         StatusCode =  HttpStatusCode.InternalServerError,
+                          ReasonPhrase =  errorString
+                    };
                     return;
                 }
-                var validator = context.HttpContext.RequestServices.GetService<IHashValidator>();
+                var validator = new Md5Validator(Constants.signKey);
                 var raw = string.Empty;
 
-                if (context.HttpContext.Request.Method.ToLower() == "get") // from uri
+                if (context.Request.Method == HttpMethod.Get) // from uri
                 {
-                    raw = string.Join('&', context.HttpContext.Request.Query.OrderBy(x => x.Key).Select(a => a.Key + '=' + a.Value).ToArray());
+                    if (context.Request.GetQueryNameValuePairs().Count() > 0)
+                    {
+                        raw = string.Join("&", context.Request.GetQueryNameValuePairs().OrderBy(x => x.Key).Select(a => a.Key + "=" + a.Value).ToArray());
+                        if (validator.Validate(sign, raw))
+                        {
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        // 没有参数
+                        return;
+                    }
                 }
                 else // post from body, and olny one argument (DTO)
                 {
-                    if (context.ActionArguments.Values.FirstOrDefault() is DtoBase dto)
+                    // post 必须有参数
+                    if (context.ActionArguments.Values.Count > 0)
                     {
-                        raw = dto.ToString();
+                        if (validator.ValidateObject(sign, context.ActionArguments.Values.First()))
+                        {
+                            return;
+                        }
                     }
-                }
-
-                if (validator.Validate(sign, raw))
-                {
-                    return;
                 }
             }
 
-            context.Result = new UnauthorizedResult();
+
+            context.Response = new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.Unauthorized
+            };
+        }
+
+
+
+        public override async Task OnActionExecutedAsync(HttpActionExecutedContext actionExecutedContext, CancellationToken cancellationToken)
+        {
+            if (actionExecutedContext.Response?.StatusCode == HttpStatusCode.OK)
+            {
+                if (actionExecutedContext.Request.Properties.ContainsKey(Constants.HeaderSignKey))
+                {
+                    // added some where
+                    actionExecutedContext.Response.Headers.Add(Constants.HeaderSignKey,
+                        actionExecutedContext.Request.Properties[Constants.HeaderSignKey].ToString());
+                }
+                else
+                {
+                    var result = await actionExecutedContext.Response.Content.ReadAsStringAsync();
+                    var apiResult = JsonConvert.DeserializeObject<ApiResult<object>>(result);
+
+                    //var parkingDic = actionExecutedContext.Request.Headers.Where(h => h.Key == Constants.HeaderParkingKey).FirstOrDefault();
+                    //var parkingId = parkingDic.Key != null ? parkingDic.Value.FirstOrDefault() : string.Empty;
+
+                    if (apiResult != null && !string.IsNullOrWhiteSpace(Constants.signKey))
+                    {
+                        var validator = new Md5Validator(Constants.signKey);
+                        var sign = validator.ComputeHashFromObject(apiResult);
+                        actionExecutedContext.Response.Headers.Add(Constants.HeaderSignKey, sign);
+                    }
+                }
+            }
+
+            await base.OnActionExecutedAsync(actionExecutedContext, cancellationToken);
         }
     }
 }

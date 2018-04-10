@@ -11,9 +11,9 @@ namespace Common
     {
         private readonly string _key;
 
-        public Md5Validator(string key)
+        public Md5Validator()
         {
-            _key = key;
+            _key = Constants.signKey;
         }
 
         public string GetKeyValuePairString(object data)
