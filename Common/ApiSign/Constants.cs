@@ -11,6 +11,6 @@ namespace Common
     {
         public const string HeaderSignKey = "sign";
 
-        public static readonly string signKey = ConfigurationManager.AppSettings.Get("signKey");
+        public static readonly string signKey = "000000";/// ConfigurationManager.AppSettings.Get("signKey");
     }
 }

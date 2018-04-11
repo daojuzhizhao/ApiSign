@@ -13,6 +13,8 @@ using System.Web.Http.Results;
 
 namespace Common
 {
+
+    //[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
     public class SignValidateAttribute : ActionFilterAttribute
     {
         public override void OnActionExecuting(HttpActionContext context)
@@ -37,12 +39,12 @@ namespace Common
 
                     context.Response = new HttpResponseMessage
                     {
-                         StatusCode =  HttpStatusCode.InternalServerError,
-                          ReasonPhrase =  errorString
+                        StatusCode = HttpStatusCode.InternalServerError,
+                        ReasonPhrase = errorString
                     };
                     return;
                 }
-                var validator = new Md5Validator(Constants.signKey);
+                var validator = new Md5Validator();
                 var raw = string.Empty;
 
                 if (context.Request.Method == HttpMethod.Get) // from uri
@@ -79,38 +81,6 @@ namespace Common
             {
                 StatusCode = HttpStatusCode.Unauthorized
             };
-        }
-
-
-
-        public override async Task OnActionExecutedAsync(HttpActionExecutedContext actionExecutedContext, CancellationToken cancellationToken)
-        {
-            if (actionExecutedContext.Response?.StatusCode == HttpStatusCode.OK)
-            {
-                if (actionExecutedContext.Request.Properties.ContainsKey(Constants.HeaderSignKey))
-                {
-                    // added some where
-                    actionExecutedContext.Response.Headers.Add(Constants.HeaderSignKey,
-                        actionExecutedContext.Request.Properties[Constants.HeaderSignKey].ToString());
-                }
-                else
-                {
-                    var result = await actionExecutedContext.Response.Content.ReadAsStringAsync();
-                    var apiResult = JsonConvert.DeserializeObject<ApiResult<object>>(result);
-
-                    //var parkingDic = actionExecutedContext.Request.Headers.Where(h => h.Key == Constants.HeaderParkingKey).FirstOrDefault();
-                    //var parkingId = parkingDic.Key != null ? parkingDic.Value.FirstOrDefault() : string.Empty;
-
-                    if (apiResult != null && !string.IsNullOrWhiteSpace(Constants.signKey))
-                    {
-                        var validator = new Md5Validator(Constants.signKey);
-                        var sign = validator.ComputeHashFromObject(apiResult);
-                        actionExecutedContext.Response.Headers.Add(Constants.HeaderSignKey, sign);
-                    }
-                }
-            }
-
-            await base.OnActionExecutedAsync(actionExecutedContext, cancellationToken);
         }
     }
 }

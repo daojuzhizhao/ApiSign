@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Common.ApiSign
+namespace Common
 {
     public class HttpClientWapper : IHttpClientWrapper, IDisposable
     {
