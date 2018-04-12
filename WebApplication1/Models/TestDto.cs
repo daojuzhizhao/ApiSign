@@ -13,5 +13,13 @@ namespace WebApplication1
         public int age { get; set; }
 
         public string address { get; set; }
+
+
+        public Test2[] data { get; set; }
+    }
+
+    public class Test2
+    {
+        public string phone { get; set; }
     }
 }

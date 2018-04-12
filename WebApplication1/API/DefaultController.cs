@@ -13,9 +13,9 @@ namespace WebApplication1.API
     public class DefaultController : ApiController
     {
         [HttpPost]
-        public ApiResult GetTest([FromBody]TestDto dto)
+        public ApiResult<TestDto> GetTest([FromBody]TestDto dto)
         {
-            return new ApiResult();
+            return new ApiResult<TestDto>(dto);
         }
     }
 }

@@ -17,14 +17,28 @@ namespace WebApplication1.Controllers
             {
                 address = "天府软件园E6-1115",
                 age = 28,
-                name = "周游"
+                name = "周游",
+                data = new Test2[]
+                {
+                    new Test2{phone="15228834746"},
+                    new Test2{phone="11111111111"},
+                    new Test2{phone="22222222222"},
+                    new Test2{phone="33333333333"},
+
+                }
             };
 
-            IHttpClientWrapper http = new HttpClientWapper(new  Md5Validator());
-            var result = http.PostAsync<ApiResult>("http://localhost:911/", "api/default/gettest", dto, true);
+            List<Test2> list = new List<Test2>{
+                    new Test2{phone="15228834746"},
+                    new Test2{phone="11111111111"},
+                    new Test2{phone="22222222222"},
+                    new Test2{phone="33333333333"},
+            };
 
+            string sign = new Md5Validator().ComputeHashFromObject(dto);
 
-            ViewBag.Message = JsonConvert.SerializeObject(result);
+            ViewBag.sign = sign;
+           ViewBag.Message = JsonConvert.SerializeObject(list);
 
             return View();
         }

@@ -1,15 +1,10 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
-using System.Web.Http.Results;
 
 namespace Common
 {
@@ -19,31 +14,12 @@ namespace Common
     {
         public override void OnActionExecuting(HttpActionContext context)
         {
+            string msg = string.Empty;
 
             var signDic = context.Request.Headers.Where(h => h.Key == Constants.HeaderSignKey).FirstOrDefault();
             var sign = signDic.Key != null ? signDic.Value.FirstOrDefault() : string.Empty;
             if (!string.IsNullOrEmpty(sign))
             {
-                if (!context.ModelState.IsValid)
-                {
-                    // 获取所有错误的Key 
-                    var keys = context.ModelState.Keys.ToList();
-                    // 获取每一个key对应的ModelStateDictionary 
-                    var errorString = string.Empty;
-                    errorString = keys.Select(key => context.ModelState[key].Errors.ToList()).SelectMany(errors => errors).Aggregate(errorString, (current, error) => current + (error.ErrorMessage + ";"));
-                    if (errorString.StartsWith(";")) errorString = errorString.Remove(0, 1);
-                    if (string.IsNullOrEmpty(errorString))
-                    {
-                        errorString = "参数不合法";
-                    }
-
-                    context.Response = new HttpResponseMessage
-                    {
-                        StatusCode = HttpStatusCode.InternalServerError,
-                        ReasonPhrase = errorString
-                    };
-                    return;
-                }
                 var validator = new Md5Validator();
                 var raw = string.Empty;
 
@@ -74,13 +50,29 @@ namespace Common
                         }
                     }
                 }
-            }
+#if DEBUG
+                msg = "参数不合法";
+#endif
 
+            }
+            else
+            {
+#if DEBUG
+                msg = "缺少校验码";
+#endif
+            }
 
             context.Response = new HttpResponseMessage
             {
-                StatusCode = HttpStatusCode.Unauthorized
+                StatusCode = HttpStatusCode.NotFound,
+                Content = new StringContent(msg, Encoding.GetEncoding("UTF-8"))
+
             };
+            base.OnActionExecuting(context);
+
+
         }
+        
     }
+
 }
